@@ -29,8 +29,8 @@ extern void drawParticles(int startIdx, int count);
 }
 
 void setupPrims() {
-	Sphere::setupSphere();
-	Capsule::setupCapsule();
+	//Sphere::setupSphere();
+	//Capsule::setupCapsule();
 
 	//TODO
 	//You define how many particles will be in the simulation (maxParticles number in render.cpp is defined to SHRT_MAX, 

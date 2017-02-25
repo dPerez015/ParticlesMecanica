@@ -154,6 +154,7 @@ void linkProgram(GLuint program) {
 	}
 }
 
+#pragma region BOX
 //////////////////////////////////////////////////BOX
 namespace Box{
 GLuint cubeVao;
@@ -247,8 +248,10 @@ void drawCube() {
 	glBindVertexArray(0);
 }
 }
+#pragma endregion
 
 //////////////////////////////////////////////////AXIS
+#pragma region AXIS
 namespace Axis {
 GLuint AxisVao;
 GLuint AxisVbo[3];
@@ -344,8 +347,11 @@ void drawAxis() {
 	glBindVertexArray(0);
 }
 }
+#pragma endregion
 
 //////////////////////////////////////////////////SPHERE
+#pragma region SPHERE
+
 namespace Sphere {
 GLuint sphereVao;
 GLuint sphereVbo;
@@ -479,8 +485,11 @@ void drawSphere() {
 	glBindVertexArray(0);
 }
 }
+#pragma endregion
 
 //////////////////////////////////////////////////CAPSULE
+#pragma region CAPSULE
+
 namespace Capsule {
 GLuint capsuleVao;
 GLuint capsuleVbo[2];
@@ -659,11 +668,15 @@ void drawCapsule() {
 }
 }
 
+#pragma endregion
+
 //////////////////////////////////////////////////PARTICLES
+#pragma region PARTICLES
+
 //Same rendering as Sphere (reusing shaderss)
 namespace LilSpheres {
 GLuint particlesVao;
-GLuint particlesVbo;
+GLuint particlesVbo;//creo que aqui estan guardadas las posiciones de las particulas
 float radius;
 int numparticles;
 extern const int maxParticles = SHRT_MAX;
@@ -694,7 +707,7 @@ void cleanupParticles() {
 
 	Sphere::cleanupSphereShaderAndProgram();
 }
-void updateParticles(int startIdx, int count, float* array_data) {
+void updateParticles(int startIdx, int count, float* array_data) {// startIDx es el punto de inicio, count es el numero de particulas que actualizamos, array_data es un array con las nuevas posiciones
 	glBindBuffer(GL_ARRAY_BUFFER, particlesVbo);
 	float* buff = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	buff = &buff[startIdx];
@@ -718,3 +731,4 @@ void drawParticles(int startIdx, int count) {
 	glBindVertexArray(0);
 }
 }
+#pragma endregion

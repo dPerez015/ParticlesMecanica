@@ -81,10 +81,10 @@ int main(int argc, char** argv){
 	prev_frametimestamp = glfwGetTime();
 	while(!glfwWindowShouldClose(window)) { // Loop until the user closes the window
 		glfwPollEvents(); // Poll for events
-		ImGui_ImplGlfwGL3_NewFrame();
+		ImGui_ImplGlfwGL3_NewFrame();//nuevo frame de IMGUi
 		
-		ImGuiIO& io = ImGui::GetIO();
-		GUI();
+		ImGuiIO& io = ImGui::GetIO();//Recibe info de IO de IMGUi i la guarda en "io"
+		GUI();//funcion de physics.cpp, aqui hacemos cosas con la GUI
 		PhysicsUpdate((float)expected_frametime);
 		if(!io.WantCaptureMouse) {
 			MouseEvent ev = {io.MousePos.x, io.MousePos.y, 
