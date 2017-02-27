@@ -4,8 +4,8 @@
 #include <cstdio>
 
 //Boolean variables allow to show/hide the primitives
-bool renderSphere = true;
-bool renderCapsule = true;
+bool renderSphere = false;
+bool renderCapsule = false;
 bool renderParticles = true;
 
 namespace Sphere {
@@ -22,11 +22,15 @@ extern void drawCapsule();
 }
 namespace LilSpheres {
 extern const int maxParticles;
-extern void setupParticles(int numTotalParticles, float radius = 0.05f);
+extern void setupParticles(int numTotalParticles, float radius = 0.05f, float lifeT=3.0f);
 extern void cleanupParticles();
 extern void updateParticles(int startIdx, int count, float* array_data);
 extern void drawParticles(int startIdx, int count);
 }
+
+extern int partArrayLastPos;
+extern int partArrayFirstPos;
+
 
 void setupPrims() {
 	//Sphere::setupSphere();
@@ -38,20 +42,21 @@ void setupPrims() {
 	//	like having to create multiple buffers because of interger overflow...)
 	//Link the parameter of setupParticles to the max number of particles in the physics simulation you want to have
 	LilSpheres::setupParticles(LilSpheres::maxParticles);
-	//
+	
 
 	//TODO
 	//updateParticles is the function you can use to update the position of the particles (directly from the physics code)
 	//The access is contiguous from an start idx to idx+count particles. You may need to do multiple calls.
 	//Called here as an example to initialize to random values all particles inside the box. This code can be removed.
-	float *partVerts = new float[LilSpheres::maxParticles * 3];
+	
+	/*float *partVerts = new float[LilSpheres::maxParticles * 3];
 	for(int i = 0; i < LilSpheres::maxParticles; ++i) {
 		partVerts[i * 3 + 0] = ((float)rand() / RAND_MAX) * 10.f - 5.f;
 		partVerts[i * 3 + 1] = ((float)rand() / RAND_MAX) * 10.f;
 		partVerts[i * 3 + 2] = ((float)rand() / RAND_MAX) * 10.f - 5.f;
 	}
 	LilSpheres::updateParticles(0, LilSpheres::maxParticles, partVerts);
-	delete[] partVerts;
+	delete[] partVerts;*/
 	//
 }
 void cleanupPrims() {
@@ -65,10 +70,17 @@ void renderPrims() {
 		Sphere::drawSphere();
 	if(renderCapsule)
 		Capsule::drawCapsule();
-
+	
 	//TODO drawParticles can only draw a contiguous amount of particles in its array from start idx to idx+count
 	//Depending the alive particles that have to be rendered, you may need to do multiple calls for this function
-	if(renderParticles)
-		LilSpheres::drawParticles(0, LilSpheres::maxParticles);
-	//
+	if (renderParticles) {
+		if (partArrayFirstPos<=partArrayLastPos) {
+			LilSpheres::drawParticles(partArrayFirstPos, partArrayLastPos-partArrayFirstPos);
+		}
+		else {
+			LilSpheres::drawParticles(0, partArrayLastPos);
+			LilSpheres::drawParticles(partArrayFirstPos, LilSpheres::maxParticles - partArrayFirstPos);
+		}
+	}
+	
 }

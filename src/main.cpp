@@ -43,8 +43,14 @@ namespace {
 	}
 }
 
+void error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Error: %s\n", description);
+}
+
 //int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 int main(int argc, char** argv){
+	glfwSetErrorCallback(error_callback);
 	//Init GLFW
 	if(!glfwInit()) {
 		fprintf(stderr, "Couldn't initialize GLFW\n");

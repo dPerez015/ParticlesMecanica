@@ -678,15 +678,17 @@ namespace LilSpheres {
 GLuint particlesVao;
 GLuint particlesVbo;//creo que aqui estan guardadas las posiciones de las particulas
 float radius;
+float lifeTime;
 int numparticles;
 extern const int maxParticles = SHRT_MAX;
 
-void setupParticles(int numTotalParticles, float radius) {
+void setupParticles(int numTotalParticles, float radius, float lifeT) {
 	assert(numTotalParticles > 0);
 	assert(numTotalParticles <= SHRT_MAX);
 	numparticles = numTotalParticles;
 	LilSpheres::radius = radius;
-	
+	LilSpheres::lifeTime = lifeT;
+
 	glGenVertexArrays(1, &particlesVao);
 	glBindVertexArray(particlesVao);
 	glGenBuffers(1, &particlesVbo);
@@ -712,7 +714,7 @@ void updateParticles(int startIdx, int count, float* array_data) {// startIDx es
 	float* buff = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	buff = &buff[startIdx];
 	for(int i = 0; i < 3*count; ++i) {
-		buff[i] = array_data[i];
+		buff[i] = array_data[startIdx+i];
 	}
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
