@@ -5,7 +5,7 @@
 #include <glm\gtc\matrix_transform.hpp>
 #include <glm\gtc\constants.hpp>
 
-bool show_test_window = false;
+bool show_test_window = true;
 bool useEuler = true;
 
 int partArrayLastPos;//posicion del array donde inicializar la siguiente particula
@@ -39,6 +39,8 @@ struct particlesInfo{
 	glm::vec3 acceleration;
 	float radius;
 	float timeAlive;
+	float elasticCoef;
+	float frictCoef;
 };
 
 particlesInfo* partArray;
@@ -52,40 +54,44 @@ public:
 		partArrayFirstPos = first;
 		partArrayLastPos = last;
 	}
+	int intensity;//cantidad de particulas/s genereadas
 
 protected:
 	glm::vec3 position;
 	float apertureAngle;
 	float particlesRadius;
 	float particlesSpeed;
-	int intensity;//cantidad de particulas/s genereadas
+	
 
 };
 
-class PointEmitter: emitter {
+class PointEmitter: public emitter {
 public:
 	PointEmitter() {
 		//colocamos el emisor en el centro
 		position.x =0;
-		position.y = 5;
+		position.y = 4;
 		position.z = 0;
 		//apuntamos hacia abajo (y hacemos el vector direccion unitario)
-		direction.x = 0;
-		direction.y = -1;
+		direction.x = 1;
+		direction.y = 0;
 		direction.z = 0;
-		//seteamos el primero de los vectores de rotacion (perpendicular al primero)
-		rotateVec1.x = direction.y;
-		rotateVec1.y = -direction.x;
-		rotateVec1.z = 0;
-		//seteamos el segundo vector de rotacion (perpendicular a los otros 2 por ser un cross product de ellos)
-		rotateVec2=glm::cross(direction,rotateVec1);
+		//direction = glm::rotateZ(direction,glm::radians<float>(45.0f));
+		//seteamos el vector de rotacion (perpendicular al primero)
+		rotateVec.x = direction.y;
+		rotateVec.y = -direction.x;
+		rotateVec.z = 0;
+		
 		//seteamos las caracteristicas de las particulas que emitira
-		particlesRadius = 0.05;
+		//particlesRadius = 0.05;
 		particlesSpeed = 5;
+		elasticCoef=0.8;
+		frictCoef=0.8;
+
 		//seteamos la apertura del emisor
-		apertureAngle = glm::radians<float>(45.0f);
+		apertureAngle = glm::radians<float>(10.0f);
 		//seteamos la intensidad
-		intensity = 100;
+		intensity = 1000;
 	}
 	 void generateParticles(float& dt) override {
 		int particlesToGenerate = intensity*dt;
@@ -95,10 +101,10 @@ public:
 			partArray[partArrayLastPos].position.y = position.y;
 			partArray[partArrayLastPos].position.z = position.z;
 			//seteamos sus velocidades usando un random dentro de los limites del angulo de apertura
-			//primero lo giramos un angulo random entre 0 y el angulo maximo, despues giramos el vector sobre el segundo vector de rotacion
+			//primero lo giramos un angulo random entre 0 y el angulo maximo, despues giramos el vector usando como eje la direccion
 			//en un angulo random (entre 0 y 360).
 			//una vez hecho esto, como el vector inicial era unitario este tambien lo serà, y asi lo podemos multiplicar por la constante particlesspeed que tenemos
-			partArray[partArrayLastPos].speed = particlesSpeed*glm::rotate(glm::rotate(direction, ((float)rand() / RAND_MAX)*apertureAngle,rotateVec1),((float)rand()/RAND_MAX)*2*glm::pi<float>(),rotateVec2);
+			partArray[partArrayLastPos].speed = particlesSpeed*glm::rotate(glm::rotate(direction, ((float)rand() / RAND_MAX)*apertureAngle,rotateVec),((float)rand()/RAND_MAX)*2*glm::pi<float>(),direction);
 			
 			//seteamos la aceleracion
 			partArray[partArrayLastPos].acceleration.x = 0;
@@ -107,6 +113,7 @@ public:
 
 			//seteamos el tamaño de esta esfera 
 			partArray[partArrayLastPos].radius = particlesRadius;
+			partArray[partArrayLastPos].elasticCoef = elasticCoef;
 
 			//seteamos el tiempo de vida de la esfera a 0
 			partArray[partArrayLastPos].timeAlive = 0;
@@ -120,16 +127,37 @@ public:
 	
 	
 private:
+	float elasticCoef;
+	float frictCoef;
 	glm::vec3 direction;
-	glm::vec3 rotateVec1;
-	glm::vec3 rotateVec2;
+	glm::vec3 rotateVec;
 };
 
 PointEmitter fountain;
 
-void updateParticlesEuler(float& dt) {
-	//usamos un for desde la primmera particula viva y ultima inicializada.
-	for (int i =partArrayFirstPos; i <= partArrayLastPos; i++) {
+void wallCollision(glm::vec3 planeNormal, float planePoint, glm::vec3 particlePos) {
+	
+}
+
+void checkCollisions(int first, int last) {
+	for (int i = first; i <last ; i++){
+		//colisiones con los muros
+
+
+
+
+		//colisiones con la esfera
+
+		//colisiones con la capsula
+
+	}
+}
+
+
+
+void updateParticlesEuler(float& dt, int first, int last) {
+	//usamos un for desde la primera particula viva y ultima inicializada.
+	for (int i =first; i <= last; i++) {
 		//update de la velocidad
 		partArray[i].speed.x = partArray[i].speed.x+(dt*partArray[i].acceleration.x);
 		partArray[i].speed.y = partArray[i].speed.y+(dt*partArray[i].acceleration.y);
@@ -142,6 +170,7 @@ void updateParticlesEuler(float& dt) {
 
 		//update del tiempo de vida
 		partArray[i].timeAlive += dt;
+		
 	}
 }
 void killParticles(float& dt) {
@@ -151,6 +180,9 @@ void killParticles(float& dt) {
 		
 		if (partArray[i].timeAlive>=LilSpheres::lifeTime) {
 			partArrayFirstPos++;
+			if (partArrayFirstPos++ >= LilSpheres::maxParticles) {
+				partArrayFirstPos = 0;
+			}
 		}
 		else {
 			stillGoing = false;
@@ -167,11 +199,13 @@ void updateIntermediateArray() {
 	
 }
 
+
 void GUI() {
 	{	//FrameRate
 		int partAlive = partArrayLastPos - partArrayFirstPos;
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::Text("El numero de particulas vivas es:%i",partAlive);
+		//ImGui::DragInt("drag int", &fountain.intensity, 100);
 		//TODO
 	}
 
@@ -180,6 +214,7 @@ void GUI() {
 		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
 		ImGui::ShowTestWindow(&show_test_window);
 	}
+
 }
 
 void PhysicsInit() {
@@ -191,16 +226,26 @@ void PhysicsInit() {
 void PhysicsUpdate(float dt) {
 	fountain.generateParticles(dt);
 	killParticles(dt);
-	updateParticlesEuler(dt);
-	updateIntermediateArray();
-
 	if (partArrayFirstPos <= partArrayLastPos) {
-		LilSpheres::updateParticles(partArrayFirstPos*3, partArrayLastPos - partArrayFirstPos, toUpdate);
+		updateParticlesEuler(dt,partArrayFirstPos,partArrayLastPos);
+		checkCollisions(partArrayFirstPos, partArrayLastPos);
+
+		updateIntermediateArray();
+		
+		LilSpheres::updateParticles(partArrayFirstPos * 3, partArrayLastPos - partArrayFirstPos, toUpdate);
 	}
 	else {
+		updateParticlesEuler(dt,0, partArrayLastPos);
+		updateParticlesEuler(dt, partArrayFirstPos,LilSpheres::maxParticles-1);
+		checkCollisions(0, partArrayLastPos);
+		checkCollisions(partArrayFirstPos,LilSpheres::maxParticles-1);
+
+		updateIntermediateArray();
+
 		LilSpheres::updateParticles(0, partArrayLastPos, toUpdate);
 		LilSpheres::updateParticles(partArrayFirstPos * 3, LilSpheres::maxParticles - partArrayFirstPos, toUpdate);
 	}
+	
 	
 }
 void PhysicsCleanup() {

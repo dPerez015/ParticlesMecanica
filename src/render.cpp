@@ -714,7 +714,7 @@ void updateParticles(int startIdx, int count, float* array_data) {// startIDx es
 	float* buff = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	buff = &buff[startIdx];
 	for(int i = 0; i < 3*count; ++i) {
-		buff[i] = array_data[startIdx+i];
+		buff[i] = array_data[i+startIdx];
 	}
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
