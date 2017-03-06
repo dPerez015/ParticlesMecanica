@@ -4,6 +4,18 @@
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
 #include <glm\gtc\constants.hpp>
+#include <glm/gtx/norm.hpp>
+
+//sistema de flags de colisiones
+#define MURO1 1
+#define MURO2 2
+#define MURO3 4
+#define MURO4 8
+#define MURO5 16
+#define MURO6 32
+#define ESFERA 64
+#define CAPSULA 128
+
 
 bool show_test_window = true;
 bool useEuler = true;
@@ -11,6 +23,18 @@ bool useEuler = true;
 int partArrayLastPos;//posicion del array donde inicializar la siguiente particula
 int partArrayFirstPos;//posicion de la primera particula a renderizar
 
+glm::vec3 lowPlaneNormal(0, 1, 0);
+glm::vec3 upperPlaneNormal(0,-1,0);
+glm::vec3 rightPlaneNormal(-1,0,0);
+glm::vec3 leftPlaneNormal(1,0,0);
+glm::vec3 frontPlaneNormal(0,0,1);
+glm::vec3 backPlaneNormal(0,0,-1);
+float lowPlaneD = 0;
+float upperPlaneD = 10;
+float rightPlaneD = 5;
+float leftPlaneD = 5;
+float frontPlaneD = 5;
+float backPlaneD = 5;
 
 namespace Sphere {
 	extern void setupSphere(glm::vec3 pos = glm::vec3(0.f, 1.f, 0.f), float radius = 1.f);
@@ -41,6 +65,7 @@ struct particlesInfo{
 	float timeAlive;
 	float elasticCoef;
 	float frictCoef;
+	unsigned char relativePos;
 };
 
 particlesInfo* partArray;
@@ -55,6 +80,7 @@ public:
 		partArrayLastPos = last;
 	}
 	int intensity;//cantidad de particulas/s genereadas
+	bool isActive;
 
 protected:
 	glm::vec3 position;
@@ -64,17 +90,22 @@ protected:
 	
 
 };
+float distancePointPlane(glm::vec3 &point, glm::vec3 &normal, float& d) {
+	float ret= glm::dot(point, normal) + d / glm::length2(normal);
+	return ret;
+}
 
 class PointEmitter: public emitter {
 public:
 	PointEmitter() {
+		isActive = true;
 		//colocamos el emisor en el centro
 		position.x =0;
-		position.y = 4;
+		position.y = 5;
 		position.z = 0;
 		//apuntamos hacia abajo (y hacemos el vector direccion unitario)
-		direction.x = 1;
-		direction.y = 0;
+		direction.x = 0;
+		direction.y = 1;
 		direction.z = 0;
 		//direction = glm::rotateZ(direction,glm::radians<float>(45.0f));
 		//seteamos el vector de rotacion (perpendicular al primero)
@@ -91,7 +122,7 @@ public:
 		//seteamos la apertura del emisor
 		apertureAngle = glm::radians<float>(10.0f);
 		//seteamos la intensidad
-		intensity = 1000;
+		intensity = 100;
 	}
 	 void generateParticles(float& dt) override {
 		int particlesToGenerate = intensity*dt;
@@ -115,6 +146,28 @@ public:
 			partArray[partArrayLastPos].radius = particlesRadius;
 			partArray[partArrayLastPos].elasticCoef = elasticCoef;
 
+			//seteamos las posiciones relativas a los muros
+			partArray[partArrayLastPos].relativePos = 0;
+			if (distancePointPlane(partArray[partArrayLastPos].position, lowPlaneNormal,lowPlaneD)>=0) {
+				partArray[partArrayLastPos].relativePos = partArray[partArrayLastPos].relativePos | MURO1;
+				}
+			if (distancePointPlane(partArray[partArrayLastPos].position, upperPlaneNormal, upperPlaneD) >= 0) {
+				partArray[partArrayLastPos].relativePos = partArray[partArrayLastPos].relativePos | MURO2;
+			}
+			if (distancePointPlane(partArray[partArrayLastPos].position, rightPlaneNormal, rightPlaneD) >= 0) {
+				partArray[partArrayLastPos].relativePos = partArray[partArrayLastPos].relativePos | MURO3;
+			}
+			if (distancePointPlane(partArray[partArrayLastPos].position, leftPlaneNormal, leftPlaneD) >= 0) {
+				partArray[partArrayLastPos].relativePos = partArray[partArrayLastPos].relativePos | MURO4;
+			}
+			if (distancePointPlane(partArray[partArrayLastPos].position, frontPlaneNormal, frontPlaneD) >= 0) {
+				partArray[partArrayLastPos].relativePos = partArray[partArrayLastPos].relativePos | MURO5;
+			}
+			if (distancePointPlane(partArray[partArrayLastPos].position, backPlaneNormal, backPlaneD) >= 0) {
+				partArray[partArrayLastPos].relativePos = partArray[partArrayLastPos].relativePos | MURO6;
+			}
+			
+
 			//seteamos el tiempo de vida de la esfera a 0
 			partArray[partArrayLastPos].timeAlive = 0;
 			//aumentamos la posicion del iterador del array, si es demasiado grande volvemos al principio
@@ -124,7 +177,9 @@ public:
 			
 		}
 	}
-	
+	 void rotatePositionX(float rotation) {
+		
+	 }
 	
 private:
 	float elasticCoef;
@@ -135,15 +190,43 @@ private:
 
 PointEmitter fountain;
 
-void wallCollision(glm::vec3 planeNormal, float planePoint, glm::vec3 particlePos) {
+
+
+void mirrorPosition(particlesInfo& particle, glm::vec3 & planeNormal, float& d) {
+	glm::vec3 newPos = particle.position - 2 * (glm::dot(particle.position, planeNormal)+d)*planeNormal;
+	particle.position = newPos;
+}
+void mirrorVelocity(particlesInfo& particle, glm::vec3 & planeNormal) {
+	particle.speed = particle.speed - 2*(glm::dot(planeNormal, particle.speed))*planeNormal;
+}
+
+void wallColision(particlesInfo& particle, glm::vec3& planeNormal, float& d, int numberOfPlane) {
+	unsigned char newDistance;
+	//comprovamos la nueva distancia
+	if (distancePointPlane(particle.position, planeNormal, d)<=0) {//si es negativa ponemos 0
+		newDistance = 0;
+	}
+	else {//si es positivo ponemos 1
+		newDistance = 1;
+	}
+	newDistance *= numberOfPlane;
+
+	if ((particle.relativePos & numberOfPlane) != newDistance) {
+		mirrorPosition(particle,planeNormal, d);
+		mirrorVelocity(particle, planeNormal);
+	}
 	
 }
 
 void checkCollisions(int first, int last) {
 	for (int i = first; i <last ; i++){
 		//colisiones con los muros
-
-
+		wallColision(partArray[i],lowPlaneNormal,lowPlaneD,MURO1);
+		wallColision(partArray[i], upperPlaneNormal, upperPlaneD, MURO2);
+		wallColision(partArray[i], rightPlaneNormal, rightPlaneD, MURO3);
+		wallColision(partArray[i], leftPlaneNormal, leftPlaneD, MURO4);
+		wallColision(partArray[i], frontPlaneNormal, frontPlaneD, MURO5);
+		wallColision(partArray[i], backPlaneNormal, backPlaneD, MURO6);
 
 
 		//colisiones con la esfera
@@ -205,7 +288,8 @@ void GUI() {
 		int partAlive = partArrayLastPos - partArrayFirstPos;
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::Text("El numero de particulas vivas es:%i",partAlive);
-		//ImGui::DragInt("drag int", &fountain.intensity, 100);
+		ImGui::Checkbox("PointEmitter Active", &fountain.isActive);
+		ImGui::DragInt("PointEmitter Intensity", &fountain.intensity, 100);
 		//TODO
 	}
 
@@ -224,7 +308,10 @@ void PhysicsInit() {
 	toUpdate = new float[LilSpheres::maxParticles * 3];
 }
 void PhysicsUpdate(float dt) {
-	fountain.generateParticles(dt);
+	if (fountain.isActive) {
+		fountain.generateParticles(dt);
+	}
+
 	killParticles(dt);
 	if (partArrayFirstPos <= partArrayLastPos) {
 		updateParticlesEuler(dt,partArrayFirstPos,partArrayLastPos);
