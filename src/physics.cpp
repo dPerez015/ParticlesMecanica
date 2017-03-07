@@ -1,3 +1,4 @@
+#include <iostream>
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_glfw_gl3.h>
 #include <glm\gtx\rotate_vector.hpp>
@@ -113,6 +114,10 @@ public:
 		rotateVec.y = -direction.x;
 		rotateVec.z = 0;
 		
+		toRotateX = 0;
+		toRotateY = 0;
+		toRotateZ = 0;
+
 		//seteamos las caracteristicas de las particulas que emitira
 		//particlesRadius = 0.05;
 		particlesSpeed = 5;
@@ -177,10 +182,20 @@ public:
 			
 		}
 	}
-	 void rotatePositionX(float rotation) {
-		
+	 void rotatePositionX() {
+		 direction = glm::rotateX(direction, glm::radians<float>(toRotateX));
+		 toRotateX = 0;
+	 }
+	 void rotatePositionY() {
+		 direction = glm::rotateY(direction, glm::radians<float>(toRotateY));
+		 toRotateY = 0;
+	 }
+	 void rotatePositionZ() {
+		 direction = glm::rotateZ(direction, glm::radians<float>(toRotateZ));
+		 toRotateZ = 0;
 	 }
 	
+	 int toRotateX, toRotateY, toRotateZ;
 private:
 	float elasticCoef;
 	float frictCoef;
@@ -259,11 +274,10 @@ void updateParticlesEuler(float& dt, int first, int last) {
 void killParticles(float& dt) {
 	bool stillGoing=true;
 	int i = partArrayFirstPos;
-	while (stillGoing) {
-		
+	while (stillGoing && partArrayFirstPos!=partArrayLastPos) {
 		if (partArray[i].timeAlive>=LilSpheres::lifeTime) {
 			partArrayFirstPos++;
-			if (partArrayFirstPos++ >= LilSpheres::maxParticles) {
+			if (partArrayFirstPos >= LilSpheres::maxParticles) {
 				partArrayFirstPos = 0;
 			}
 		}
@@ -288,8 +302,19 @@ void GUI() {
 		int partAlive = partArrayLastPos - partArrayFirstPos;
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::Text("El numero de particulas vivas es:%i",partAlive);
-		ImGui::Checkbox("PointEmitter Active", &fountain.isActive);
-		ImGui::DragInt("PointEmitter Intensity", &fountain.intensity, 100);
+		ImGui::Text("\n\nFOUNTAIN EMITER");
+		ImGui::Checkbox("Active", &fountain.isActive);
+		ImGui::DragInt("Intensity", &fountain.intensity, 50);
+		ImGui::Text("Para rotar el emisor primero setea en los sliders la rotaciona aplicar (en grados) y despues pulsa el boton");
+		ImGui::DragInt("Degrees X", &fountain.toRotateX, 10);
+		ImGui::DragInt("Degrees Y", &fountain.toRotateY, 10);
+		ImGui::DragInt("Degrees Z", &fountain.toRotateZ, 10);
+		ImGui::Text("Las rotaciones se aplican el el orden X-Y-Z");
+		if (ImGui::Button("RotateX")) {
+			fountain.rotatePositionX();
+			fountain.rotatePositionY();
+			fountain.rotatePositionZ();
+		}
 		//TODO
 	}
 
@@ -313,6 +338,7 @@ void PhysicsUpdate(float dt) {
 	}
 
 	killParticles(dt);
+
 	if (partArrayFirstPos <= partArrayLastPos) {
 		updateParticlesEuler(dt,partArrayFirstPos,partArrayLastPos);
 		checkCollisions(partArrayFirstPos, partArrayLastPos);
