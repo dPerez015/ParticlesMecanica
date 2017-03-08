@@ -122,7 +122,7 @@ public:
 		//particlesRadius = 0.05;
 		particlesSpeed = 5;
 		elasticCoef=0.8;
-		frictCoef=0.8;
+		frictCoef=0.2;
 
 		//seteamos la apertura del emisor
 		apertureAngle = glm::radians<float>(10.0f);
@@ -150,6 +150,8 @@ public:
 			//seteamos el tamaño de esta esfera 
 			partArray[partArrayLastPos].radius = particlesRadius;
 			partArray[partArrayLastPos].elasticCoef = elasticCoef;
+			partArray[partArrayLastPos].frictCoef = frictCoef;
+
 
 			//seteamos las posiciones relativas a los muros
 			partArray[partArrayLastPos].relativePos = 0;
@@ -208,11 +210,12 @@ PointEmitter fountain;
 
 
 void mirrorPosition(particlesInfo& particle, glm::vec3 & planeNormal, float& d) {
-	glm::vec3 newPos = particle.position - 2 * (glm::dot(particle.position, planeNormal)+d)*planeNormal;
+	glm::vec3 newPos = particle.position - (1 + particle.elasticCoef) * (glm::dot(particle.position, planeNormal) + d)*planeNormal;
 	particle.position = newPos;
 }
 void mirrorVelocity(particlesInfo& particle, glm::vec3 & planeNormal) {
-	particle.speed = particle.speed - 2*(glm::dot(planeNormal, particle.speed))*planeNormal;
+	particle.speed = particle.speed - (1 + particle.elasticCoef)*(glm::dot(planeNormal, particle.speed))*planeNormal;
+	particle.speed = particle.speed - particle.frictCoef*(particle.speed - glm::dot(planeNormal, particle.speed)*planeNormal);
 }
 
 void wallColision(particlesInfo& particle, glm::vec3& planeNormal, float& d, int numberOfPlane) {
